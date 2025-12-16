@@ -18,23 +18,40 @@ StyledRect {
     readonly property bool hasImage: modelData.image.length > 0
     readonly property bool hasAppIcon: modelData.appIcon.length > 0
     readonly property int nonAnimHeight: summary.implicitHeight + (root.expanded ? appName.height + body.height + actions.height + actions.anchors.topMargin : bodyPreview.height) + inner.anchors.margins * 2
+    readonly property bool isPrivate: Config.notifs.privateNotiPrefix.length > 0 && modelData.summary.startsWith(Config.notifs.privateNotiPrefix)
     property bool expanded
 
     color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainer
     radius: Appearance.rounding.normal
     implicitWidth: Config.notifs.sizes.width
     implicitHeight: inner.implicitHeight
+    opacity: isPrivate ? 0.2 : 1.0
 
     x: Config.notifs.sizes.width
     Component.onCompleted: {
         x = 0;
         modelData.lock(this);
+        
+        // Auto-close private notifications after 2 seconds
+        if (isPrivate) {
+            privateTimer.start();
+        }
     }
     Component.onDestruction: modelData.unlock(this)
 
     Behavior on x {
         Anim {
             easing.bezierCurve: Appearance.anim.curves.emphasizedDecel
+        }
+    }
+
+    Timer {
+        id: privateTimer
+        interval: 2000
+        running: false
+        repeat: false
+        onTriggered: {
+            root.modelData.popup = false;
         }
     }
 
