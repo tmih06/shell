@@ -7,6 +7,8 @@ JsonObject {
     property int expandThreshold: 20
     property bool actionOnClick: false
     property int groupPreviewNum: 3
+    property bool toplayer: true
+    property string privateNotiPrefix: ""
     property Sizes sizes: Sizes {}
 
     component Sizes: JsonObject {
