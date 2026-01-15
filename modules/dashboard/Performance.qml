@@ -206,7 +206,7 @@ ColumnLayout {
 
                 // Usage percentage (right side)
                 Column {
-                    spacing: -2
+                    spacing: -4
 
                     StyledText {
                         anchors.right: parent.right
@@ -404,13 +404,14 @@ ColumnLayout {
 
             // Disk list
             Repeater {
-                model: SystemUsage.disks.slice(0, 4)
+                model: SystemUsage.disks.slice(0, 5)
 
                 delegate: DiskRow {
                     required property var modelData
                     required property int index
 
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
 
                     diskName: modelData.mount
                     used: modelData.used
@@ -419,11 +420,12 @@ ColumnLayout {
                     diskColor: index === 0 ? Colours.palette.m3primary : 
                                index === 1 ? Colours.palette.m3secondary :
                                index === 2 ? Colours.palette.m3tertiary :
-                               Colours.palette.m3outline
+                               index === 3 ? Colours.palette.m3outline :
+                               Colours.palette.m3error
                 }
             }
 
-            Item { Layout.fillHeight: true }
+            Item { Layout.fillHeight: SystemUsage.disks.length < 5 }
         }
     }
 
@@ -462,7 +464,9 @@ ColumnLayout {
             // Disk color indicator
             Rectangle {
                 width: 4
-                height: 20
+                Layout.fillHeight: true
+                Layout.topMargin: 2
+                Layout.bottomMargin: 2
                 radius: 2
                 color: diskRow.diskColor
             }
@@ -477,7 +481,9 @@ ColumnLayout {
             // Progress bar - fills most of the space
             StyledRect {
                 Layout.fillWidth: true
-                implicitHeight: 8
+                Layout.fillHeight: true
+                Layout.topMargin: 4
+                Layout.bottomMargin: 4
 
                 color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
                 radius: Appearance.rounding.full
