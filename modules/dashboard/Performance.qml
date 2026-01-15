@@ -1,5 +1,6 @@
 import qs.components
 import qs.components.misc
+import qs.components.effects
 import qs.services
 import qs.config
 import QtQuick
@@ -139,17 +140,32 @@ ColumnLayout {
             animatedTemp = tempProgress
         }
 
-        // Background progress overlay (temperature)
-        StyledRect {
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: parent.width * Math.max(0.02, heroCard.animatedTemp)
+        // Background progress bar (usage) - masked to rounded corners
+        Item {
+            anchors.fill: parent
 
-            color: Qt.alpha(heroCard.accentColor, 0.08)
-            radius: parent.radius
+            layer.enabled: true
+            layer.effect: OpacityMask {
+                maskSource: progressMask
+            }
 
-            visible: heroCard.animatedTemp > 0.001
+            StyledRect {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: parent.width * heroCard.animatedUsage
+
+                color: Qt.alpha(heroCard.accentColor, 0.15)
+            }
+        }
+
+        // Mask shape (invisible)
+        Rectangle {
+            id: progressMask
+            anchors.fill: parent
+            radius: heroCard.radius
+            visible: false
+            layer.enabled: true
         }
 
         ColumnLayout {
@@ -225,19 +241,21 @@ ColumnLayout {
                 }
             }
 
-            // Progress bar at bottom (usage)
+            // Temperature bar at bottom (half width, left aligned)
             StyledRect {
-                Layout.fillWidth: true
-                implicitHeight: 6
+                Layout.preferredWidth: parent.width / 2 - Appearance.padding.large
+                Layout.alignment: Qt.AlignLeft
+                implicitHeight: 8
 
-                color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
+                color: Qt.alpha(heroCard.accentColor, 0.2)
                 radius: Appearance.rounding.full
 
+                // Temperature fill
                 StyledRect {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    width: parent.width * heroCard.animatedUsage
+                    width: parent.width * heroCard.animatedTemp
 
                     color: heroCard.accentColor
                     radius: Appearance.rounding.full
