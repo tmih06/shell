@@ -1,6 +1,5 @@
 import qs.components
 import qs.components.misc
-import qs.components.effects
 import qs.services
 import qs.config
 import QtQuick
@@ -19,12 +18,10 @@ ColumnLayout {
         service: SystemUsage
     }
 
-    // Top section: CPU and GPU side by side as hero cards
     RowLayout {
         Layout.fillWidth: true
         spacing: Appearance.spacing.normal
 
-        // CPU Hero Card
         HeroCard {
             Layout.fillWidth: true
             Layout.minimumWidth: 400
@@ -43,7 +40,6 @@ ColumnLayout {
             accentColor: Colours.palette.m3primary
         }
 
-        // GPU Hero Card
         HeroCard {
             Layout.fillWidth: true
             Layout.minimumWidth: 400
@@ -63,12 +59,10 @@ ColumnLayout {
         }
     }
 
-    // Bottom section: Memory and Storage
     RowLayout {
         Layout.fillWidth: true
         spacing: Appearance.spacing.normal
 
-        // Memory Card with gauge
         GaugeCard {
             Layout.minimumWidth: 250
             Layout.preferredHeight: 220
@@ -86,7 +80,6 @@ ColumnLayout {
             accentColor: Colours.palette.m3tertiary
         }
 
-        // Storage Card
         StorageCard {
             Layout.fillWidth: true
             Layout.minimumWidth: 550
@@ -96,11 +89,60 @@ ColumnLayout {
         }
     }
 
-    // ============================================
-    // Components
-    // ============================================
+    component CardHeader: RowLayout {
+        property string icon
+        property string title
+        property color accentColor: Colours.palette.m3primary
 
-    component HeroCard: StyledRect {
+        Layout.fillWidth: true
+        spacing: Appearance.spacing.small
+
+        MaterialIcon {
+            text: parent.icon
+            fill: 1
+            color: parent.accentColor
+            font.pointSize: Appearance.font.size.large
+        }
+
+        StyledText {
+            Layout.fillWidth: true
+            text: parent.title
+            font.pointSize: Appearance.font.size.normal
+            elide: Text.ElideRight
+        }
+    }
+
+    component ProgressBar: StyledRect {
+        id: progressBar
+
+        property real value: 0
+        property color fgColor: Colours.palette.m3primary
+        property color bgColor: Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
+
+        property real animatedValue: 0
+
+        color: bgColor
+        radius: Appearance.rounding.full
+
+        Component.onCompleted: animatedValue = value
+        onValueChanged: animatedValue = value
+
+        Behavior on animatedValue {
+            Anim { duration: Appearance.anim.durations.large }
+        }
+
+        StyledRect {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: parent.width * progressBar.animatedValue
+
+            color: progressBar.fgColor
+            radius: Appearance.rounding.full
+        }
+    }
+
+    component HeroCard: StyledClippingRect {
         id: heroCard
 
         property string icon
@@ -109,63 +151,42 @@ ColumnLayout {
         property string mainLabel
         property string secondaryValue
         property string secondaryLabel
-        property real usage: 0        // Usage percentage (0-1) for background overlay
-        property real temperature: 0  // Temperature in Celsius for progress bar
+        property real usage: 0
+        property real temperature: 0
         property color accentColor: Colours.palette.m3primary
 
-        // Temperature range for the bar (0-100°C mapped to 0-1)
         readonly property real maxTemp: 100
         readonly property real tempProgress: Math.min(1, Math.max(0, temperature / maxTemp))
 
+        property real animatedUsage: 0
+        property real animatedTemp: 0
+
         color: Colours.tPalette.m3surfaceContainer
         radius: Appearance.rounding.large
-        clip: true
-
-        // Animated usage for progress bar
-        property real animatedUsage: 0
-        onUsageChanged: animatedUsage = usage
-        Behavior on animatedUsage {
-            Anim { duration: Appearance.anim.durations.large }
-        }
-
-        // Animated temp for background overlay
-        property real animatedTemp: 0
-        onTempProgressChanged: animatedTemp = tempProgress
-        Behavior on animatedTemp {
-            Anim { duration: Appearance.anim.durations.large }
-        }
 
         Component.onCompleted: {
             animatedUsage = usage
             animatedTemp = tempProgress
         }
 
-        // Background progress bar (usage) - masked to rounded corners
-        Item {
-            anchors.fill: parent
+        onUsageChanged: animatedUsage = usage
+        onTempProgressChanged: animatedTemp = tempProgress
 
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: progressMask
-            }
-
-            StyledRect {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: parent.width * heroCard.animatedUsage
-
-                color: Qt.alpha(heroCard.accentColor, 0.15)
-            }
+        Behavior on animatedUsage {
+            Anim { duration: Appearance.anim.durations.large }
         }
 
-        // Mask shape (invisible)
-        Rectangle {
-            id: progressMask
-            anchors.fill: parent
-            radius: heroCard.radius
-            visible: false
-            layer.enabled: true
+        Behavior on animatedTemp {
+            Anim { duration: Appearance.anim.durations.large }
+        }
+
+        StyledRect {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: parent.width * heroCard.animatedUsage
+
+            color: Qt.alpha(heroCard.accentColor, 0.15)
         }
 
         ColumnLayout {
@@ -173,34 +194,18 @@ ColumnLayout {
             anchors.margins: Appearance.padding.large
             spacing: Appearance.spacing.small
 
-            // Header row with icon and full title
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Appearance.spacing.small
-
-                MaterialIcon {
-                    text: heroCard.icon
-                    fill: 1
-                    color: heroCard.accentColor
-                    font.pointSize: Appearance.font.size.large
-                }
-
-                StyledText {
-                    text: heroCard.title
-                    font.pointSize: Appearance.font.size.normal
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
+            CardHeader {
+                icon: heroCard.icon
+                title: heroCard.title
+                accentColor: heroCard.accentColor
             }
 
             Item { Layout.fillHeight: true }
 
-            // Bottom row: Temp on left, Usage on right
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Appearance.spacing.normal
 
-                // Temperature (left side)
                 Row {
                     spacing: Appearance.spacing.small
 
@@ -220,14 +225,13 @@ ColumnLayout {
 
                 Item { Layout.fillWidth: true }
 
-                // Usage percentage (right side)
                 Column {
                     spacing: -4
 
                     StyledText {
                         anchors.right: parent.right
                         text: heroCard.mainValue
-                    font.pointSize: Appearance.font.size.large
+                        font.pointSize: Appearance.font.size.large
                         font.weight: Font.Medium
                         color: heroCard.accentColor
                     }
@@ -241,25 +245,14 @@ ColumnLayout {
                 }
             }
 
-            // Temperature bar at bottom (half width, left aligned)
-            StyledRect {
+            ProgressBar {
                 Layout.preferredWidth: parent.width / 2 - Appearance.padding.large
                 Layout.alignment: Qt.AlignLeft
                 implicitHeight: 8
 
-                color: Qt.alpha(heroCard.accentColor, 0.2)
-                radius: Appearance.rounding.full
-
-                // Temperature fill
-                StyledRect {
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: parent.width * heroCard.animatedTemp
-
-                    color: heroCard.accentColor
-                    radius: Appearance.rounding.full
-                }
+                value: heroCard.tempProgress
+                fgColor: heroCard.accentColor
+                bgColor: Qt.alpha(heroCard.accentColor, 0.2)
             }
         }
     }
@@ -273,46 +266,33 @@ ColumnLayout {
         property string subtitle
         property color accentColor: Colours.palette.m3primary
 
-        // Arc configuration: 3/4 circle (270 degrees)
         readonly property real arcStartAngle: 0.75 * Math.PI
         readonly property real arcSweep: 1.5 * Math.PI
 
         property real animatedPercentage: 0
-        Component.onCompleted: animatedPercentage = percentage
-        onPercentageChanged: animatedPercentage = percentage
-        Behavior on animatedPercentage {
-            Anim { duration: Appearance.anim.durations.large }
-        }
 
         color: Colours.tPalette.m3surfaceContainer
         radius: Appearance.rounding.large
         clip: true
+
+        Component.onCompleted: animatedPercentage = percentage
+        onPercentageChanged: animatedPercentage = percentage
+
+        Behavior on animatedPercentage {
+            Anim { duration: Appearance.anim.durations.large }
+        }
 
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Appearance.padding.large
             spacing: Appearance.spacing.smaller
 
-            // Header
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Appearance.spacing.small
-
-                MaterialIcon {
-                    text: gaugeCard.icon
-                    fill: 1
-                    color: gaugeCard.accentColor
-                    font.pointSize: Appearance.font.size.large
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: gaugeCard.title
-                    font.pointSize: Appearance.font.size.normal
-                }
+            CardHeader {
+                icon: gaugeCard.icon
+                title: gaugeCard.title
+                accentColor: gaugeCard.accentColor
             }
 
-            // Gauge
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -333,7 +313,6 @@ ColumnLayout {
                         const radius = (Math.min(width, height) - 12) / 2;
                         const lineWidth = 10;
 
-                        // Background arc
                         ctx.beginPath();
                         ctx.arc(cx, cy, radius, gaugeCard.arcStartAngle, gaugeCard.arcStartAngle + gaugeCard.arcSweep);
                         ctx.lineWidth = lineWidth;
@@ -341,7 +320,6 @@ ColumnLayout {
                         ctx.strokeStyle = Colours.layer(Colours.palette.m3surfaceContainerHigh, 2);
                         ctx.stroke();
 
-                        // Progress arc
                         if (gaugeCard.animatedPercentage > 0) {
                             ctx.beginPath();
                             ctx.arc(cx, cy, radius, gaugeCard.arcStartAngle, gaugeCard.arcStartAngle + gaugeCard.arcSweep * gaugeCard.animatedPercentage);
@@ -369,7 +347,6 @@ ColumnLayout {
                     Component.onCompleted: requestPaint()
                 }
 
-                // Center percentage
                 StyledText {
                     anchors.centerIn: parent
                     text: `${Math.round(gaugeCard.percentage * 100)}%`
@@ -379,7 +356,6 @@ ColumnLayout {
                 }
             }
 
-            // Subtitle at bottom
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
                 text: gaugeCard.subtitle
@@ -401,26 +377,12 @@ ColumnLayout {
             anchors.margins: Appearance.padding.large
             spacing: Appearance.spacing.normal
 
-            // Header
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Appearance.spacing.small
-
-                MaterialIcon {
-                    text: "hard_disk"
-                    fill: 1
-                    color: Colours.palette.m3secondary
-                    font.pointSize: Appearance.font.size.large
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: qsTr("Storage")
-                    font.pointSize: Appearance.font.size.normal
-                }
+            CardHeader {
+                icon: "hard_disk"
+                title: qsTr("Storage")
+                accentColor: Colours.palette.m3secondary
             }
 
-            // Disk list
             Repeater {
                 model: SystemUsage.disks.slice(0, 5)
 
@@ -435,7 +397,7 @@ ColumnLayout {
                     used: modelData.used
                     total: modelData.total
                     percentage: modelData.perc
-                    diskColor: index === 0 ? Colours.palette.m3primary : 
+                    diskColor: index === 0 ? Colours.palette.m3primary :
                                index === 1 ? Colours.palette.m3secondary :
                                index === 2 ? Colours.palette.m3tertiary :
                                index === 3 ? Colours.palette.m3outline :
@@ -463,6 +425,7 @@ ColumnLayout {
 
         Component.onCompleted: animatedPercentage = percentage
         onPercentageChanged: animatedPercentage = percentage
+
         Behavior on animatedPercentage {
             Anim { duration: Appearance.anim.durations.large }
         }
@@ -476,10 +439,10 @@ ColumnLayout {
 
         RowLayout {
             id: rowLayout
+
             anchors.fill: parent
             spacing: Appearance.spacing.normal
 
-            // Disk color indicator
             Rectangle {
                 width: 4
                 Layout.fillHeight: true
@@ -489,35 +452,22 @@ ColumnLayout {
                 color: diskRow.diskColor
             }
 
-            // Disk name
             StyledText {
+                Layout.preferredWidth: 80
                 text: diskRow.diskName
                 font.pointSize: Appearance.font.size.small
-                Layout.preferredWidth: 80
             }
 
-            // Progress bar - fills most of the space
-            StyledRect {
+            ProgressBar {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.topMargin: 4
                 Layout.bottomMargin: 4
 
-                color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
-                radius: Appearance.rounding.full
-
-                StyledRect {
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: parent.width * diskRow.animatedPercentage
-
-                    color: diskRow.diskColor
-                    radius: Appearance.rounding.full
-                }
+                value: diskRow.percentage
+                fgColor: diskRow.diskColor
             }
 
-            // Percentage / Usage info (morphs on hover)
             Item {
                 Layout.preferredWidth: usageText.visible ? usageText.implicitWidth : percentText.implicitWidth
                 Layout.minimumWidth: 35
@@ -527,30 +477,33 @@ ColumnLayout {
                     Anim { duration: Appearance.anim.durations.normal }
                 }
 
-                // Percentage (shown when not hovered)
                 StyledText {
                     id: percentText
+
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
+
                     visible: !diskRow.hovered
+                    opacity: diskRow.hovered ? 0 : 1
                     text: `${Math.round(diskRow.percentage * 100)}%`
                     font.pointSize: Appearance.font.size.small
                     font.weight: Font.Medium
                     color: diskRow.diskColor
                     horizontalAlignment: Text.AlignRight
 
-                    opacity: diskRow.hovered ? 0 : 1
                     Behavior on opacity {
                         Anim { duration: Appearance.anim.durations.normal }
                     }
                 }
 
-                // Usage/Total (shown on hover)
                 StyledText {
                     id: usageText
+
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
+
                     visible: diskRow.hovered
+                    opacity: diskRow.hovered ? 1 : 0
                     text: {
                         const usedFmt = SystemUsage.formatKib(diskRow.used);
                         const totalFmt = SystemUsage.formatKib(diskRow.total);
@@ -560,7 +513,6 @@ ColumnLayout {
                     color: Colours.palette.m3onSurfaceVariant
                     horizontalAlignment: Text.AlignRight
 
-                    opacity: diskRow.hovered ? 1 : 0
                     Behavior on opacity {
                         Anim { duration: Appearance.anim.durations.normal }
                     }
