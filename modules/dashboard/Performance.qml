@@ -5,7 +5,9 @@ import qs.config
 import QtQuick
 import QtQuick.Layouts
 
-ColumnLayout {
+import Quickshell.Services.UPower
+
+RowLayout {
     id: root
 
     spacing: Appearance.spacing.normal
@@ -18,74 +20,175 @@ ColumnLayout {
         service: SystemUsage
     }
 
-    RowLayout {
+    ColumnLayout {
+        Layout.fillHeight: true
         Layout.fillWidth: true
         spacing: Appearance.spacing.normal
 
-        HeroCard {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.minimumWidth: 400
-            Layout.preferredHeight: 150
+            spacing: Appearance.spacing.normal
 
-            visible: Config.dashboard.performance.showCpu
+            HeroCard {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 400
+                Layout.preferredHeight: 150
 
-            icon: "memory"
-            title: SystemUsage.cpuName ? `CPU - ${SystemUsage.cpuName}` : qsTr("CPU")
-            mainValue: `${Math.round(SystemUsage.cpuPerc * 100)}%`
-            mainLabel: qsTr("Usage")
-            secondaryValue: root.displayTemp(SystemUsage.cpuTemp)
-            secondaryLabel: qsTr("Temp")
-            usage: SystemUsage.cpuPerc
-            temperature: SystemUsage.cpuTemp
-            accentColor: Colours.palette.m3primary
+                visible: Config.dashboard.performance.showCpu
+
+                icon: "memory"
+                title: SystemUsage.cpuName ? `CPU - ${SystemUsage.cpuName}` : qsTr("CPU")
+                mainValue: `${Math.round(SystemUsage.cpuPerc * 100)}%`
+                mainLabel: qsTr("Usage")
+                secondaryValue: root.displayTemp(SystemUsage.cpuTemp)
+                secondaryLabel: qsTr("Temp")
+                usage: SystemUsage.cpuPerc
+                temperature: SystemUsage.cpuTemp
+                accentColor: Colours.palette.m3primary
+            }
+
+            HeroCard {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 400
+                Layout.preferredHeight: 150
+
+                visible: Config.dashboard.performance.showGpu
+
+                icon: "display_settings"
+                title: SystemUsage.gpuName ? `GPU - ${SystemUsage.gpuName}` : qsTr("GPU")
+                mainValue: `${Math.round(SystemUsage.gpuPerc * 100)}%`
+                mainLabel: qsTr("Usage")
+                secondaryValue: root.displayTemp(SystemUsage.gpuTemp)
+                secondaryLabel: qsTr("Temp")
+                usage: SystemUsage.gpuPerc
+                temperature: SystemUsage.gpuTemp
+                accentColor: Colours.palette.m3secondary
+            }
         }
 
-        HeroCard {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.minimumWidth: 400
-            Layout.preferredHeight: 150
+            spacing: Appearance.spacing.normal
 
-            visible: Config.dashboard.performance.showGpu
+            GaugeCard {
+                Layout.minimumWidth: 250
+                Layout.preferredHeight: 220
 
-            icon: "display_settings"
-            title: SystemUsage.gpuName ? `GPU - ${SystemUsage.gpuName}` : qsTr("GPU")
-            mainValue: `${Math.round(SystemUsage.gpuPerc * 100)}%`
-            mainLabel: qsTr("Usage")
-            secondaryValue: root.displayTemp(SystemUsage.gpuTemp)
-            secondaryLabel: qsTr("Temp")
-            usage: SystemUsage.gpuPerc
-            temperature: SystemUsage.gpuTemp
-            accentColor: Colours.palette.m3secondary
+                visible: Config.dashboard.performance.showMemory
+
+                icon: "memory_alt"
+                title: qsTr("Memory")
+                percentage: SystemUsage.memPerc
+                subtitle: {
+                    const usedFmt = SystemUsage.formatKib(SystemUsage.memUsed);
+                    const totalFmt = SystemUsage.formatKib(SystemUsage.memTotal);
+                    return `${usedFmt.value.toFixed(1)} / ${Math.floor(totalFmt.value)} ${totalFmt.unit}`;
+                }
+                accentColor: Colours.palette.m3tertiary
+            }
+
+            StorageCard {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 550
+                Layout.preferredHeight: 220
+
+                visible: Config.dashboard.performance.showStorage
+            }
         }
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: Appearance.spacing.normal
+    BatteryTank {
+        Layout.preferredWidth: 120
+        Layout.fillHeight: true
+        Layout.minimumHeight: 350 // Match combined height + spacing roughly, or let it fill
 
-        GaugeCard {
-            Layout.minimumWidth: 250
-            Layout.preferredHeight: 220
+        visible: UPower.displayDevice.isLaptopBattery
+    }
 
-            visible: Config.dashboard.performance.showMemory
+    component BatteryTank: StyledClippingRect {
+        id: batteryTank
 
-            icon: "memory_alt"
-            title: qsTr("Memory")
-            percentage: SystemUsage.memPerc
-            subtitle: {
-                const usedFmt = SystemUsage.formatKib(SystemUsage.memUsed);
-                const totalFmt = SystemUsage.formatKib(SystemUsage.memTotal);
-                return `${usedFmt.value.toFixed(1)} / ${Math.floor(totalFmt.value)} ${totalFmt.unit}`;
-            }
-            accentColor: Colours.palette.m3tertiary
+        property real percentage: UPower.displayDevice.percentage
+        property bool isCharging: UPower.displayDevice.state === UPowerDeviceState.Charging
+        property color accentColor: Colours.palette.m3primary
+
+        property real animatedPercentage: 0
+
+        color: Colours.tPalette.m3surfaceContainer
+        radius: Appearance.rounding.large
+
+        Component.onCompleted: animatedPercentage = percentage
+        onPercentageChanged: animatedPercentage = percentage
+
+        Behavior on animatedPercentage {
+            Anim { duration: Appearance.anim.durations.large }
         }
 
-        StorageCard {
-            Layout.fillWidth: true
-            Layout.minimumWidth: 550
-            Layout.preferredHeight: 220
+        // Background Fill
+        StyledRect {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: parent.height * batteryTank.animatedPercentage
 
-            visible: Config.dashboard.performance.showStorage
+            color: Qt.alpha(batteryTank.accentColor, 0.15)
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: Appearance.padding.large
+            spacing: Appearance.spacing.small
+
+            // Header Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Appearance.spacing.small
+
+                MaterialIcon {
+                    text: batteryTank.isCharging ? "battery_charging_full" : "battery_full"
+                    font.pointSize: Appearance.font.size.large
+                    color: batteryTank.accentColor
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: qsTr("Battery")
+                    font.pointSize: Appearance.font.size.normal
+                    color: Colours.palette.m3onSurface
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            // Bottom Info Section
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: -4
+
+                StyledText {
+                    Layout.alignment: Qt.AlignRight
+                    text: `${Math.round(batteryTank.percentage * 100)}%`
+                    font.pointSize: Appearance.font.size.extraLarge
+                    font.weight: Font.Medium
+                    color: batteryTank.accentColor
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignRight
+                    text: {
+                        if (batteryTank.isCharging) {
+                            return qsTr("Charging");
+                        }
+                        const s = UPower.displayDevice.timeToEmpty;
+                        const hr = Math.floor(s / 3600);
+                        const min = Math.floor((s % 3600) / 60);
+                        if (hr > 0) return `${hr}h ${min}m`;
+                        return `${min}m`;
+                    }
+                    font.pointSize: Appearance.font.size.smaller
+                    color: Colours.palette.m3onSurfaceVariant
+                }
+            }
         }
     }
 
