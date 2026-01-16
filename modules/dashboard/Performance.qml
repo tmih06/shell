@@ -102,7 +102,7 @@ RowLayout {
         Layout.fillHeight: true
         Layout.minimumHeight: 350 // Match combined height + spacing roughly, or let it fill
 
-        visible: UPower.displayDevice.isLaptopBattery
+        visible: UPower.displayDevice.isLaptopBattery && Config.dashboard.performance.showBattery
     }
 
     component BatteryTank: StyledClippingRect {
