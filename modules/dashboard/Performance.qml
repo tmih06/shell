@@ -145,7 +145,24 @@ RowLayout {
                 spacing: Appearance.spacing.small
 
                 MaterialIcon {
-                    text: batteryTank.isCharging ? "battery_charging_full" : "battery_full"
+                    text: {
+                        if (!UPower.displayDevice.isLaptopBattery) {
+                            if (PowerProfiles.profile === PowerProfile.PowerSaver)
+                                return "energy_savings_leaf";
+                            if (PowerProfiles.profile === PowerProfile.Performance)
+                                return "rocket_launch";
+                            return "balance";
+                        }
+
+                        const perc = UPower.displayDevice.percentage;
+                        const charging = [UPowerDeviceState.Charging, UPowerDeviceState.FullyCharged, UPowerDeviceState.PendingCharge].includes(UPower.displayDevice.state);
+                        if (perc === 1)
+                            return charging ? "battery_charging_full" : "battery_full";
+                        let level = Math.floor(perc * 7);
+                        if (charging && (level === 4 || level === 1))
+                            level--;
+                        return charging ? `battery_charging_${(level + 3) * 10}` : `battery_${level}_bar`;
+                    }
                     font.pointSize: Appearance.font.size.large
                     color: batteryTank.accentColor
                 }
